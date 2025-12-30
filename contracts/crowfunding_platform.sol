@@ -45,43 +45,47 @@ contract CrowdFundingPlatform{
 
     // donate eth to campaign 
     function donate(uint256 campaignId) external payable {
-        uint256 _amt = msg.value / 1 ether;
-
-        require(_amt>0, "Amount must be greater than 0");
-        require(campaignId<totalCampaign.length, "Invalid Campaign Id");
+        require(msg.value > 0, "Amount must be greater than 0");
+        require(campaignId < totalCampaign.length, "Invalid Campaign Id");
         require(totalCampaign[campaignId]._deadline >= block.timestamp, "Deadline Passed");
+        require(!totalCampaign[campaignId].isCompleted, "Campaign is completed");
 
-        totalCampaign[campaignId].backers.push(BackersList(msg.sender, _amt));
-        totalCampaign[campaignId]._amtRaised += _amt;
+        totalCampaign[campaignId].backers.push(BackersList(msg.sender, msg.value));
+        totalCampaign[campaignId]._amtRaised += msg.value;
 
-        emit EthDonated(msg.sender, campaignId, _amt);
+        emit EthDonated(msg.sender, campaignId, msg.value);
     }
 
-    // refund if goal is not reached and deadline doesn't meet
-    function refund(uint256 campaignId) external payable{
+    // refund if goal is not reached and deadline passed
+    function refund(uint256 campaignId) external {
         Campaign storage getCampaign = totalCampaign[campaignId];
-        require(getCampaign._deadline >= block.timestamp && getCampaign._amtRaised < getCampaign._goal, "Cannot Refund");
+        require(getCampaign._deadline < block.timestamp, "Deadline not passed");
+        require(getCampaign._amtRaised < getCampaign._goal, "Goal reached, cannot refund");
+        require(!getCampaign.isCompleted, "Already processed");
 
         getCampaign.isCompleted = true;
         uint256 len = getCampaign.backers.length;
 
-        for(uint256 i=0; i<len; i++){
+        for(uint256 i = 0; i < len; i++){
             BackersList storage getBackers = getCampaign.backers[i];
-
-            payable(getBackers.donateBy).transfer(getBackers.amount);
+            (bool success, ) = payable(getBackers.donateBy).call{value: getBackers.amount}("");
+            require(success, "Transfer failed");
         }
 
         emit Refund();
     }
 
     // payout
-    function getFundsToCreator(uint256 _id) external payable{
+    function getFundsToCreator(uint256 _id) external {
         Campaign storage getCampaign = totalCampaign[_id];
         require(getCampaign._creator == msg.sender, "Only campaign creator can get the payout");
-        require(getCampaign._deadline <= block.timestamp, "Campaign is Active");
+        require(getCampaign._deadline < block.timestamp, "Campaign is Active");
+        require(getCampaign._amtRaised >= getCampaign._goal, "Goal not reached");
+        require(!getCampaign.isCompleted, "Already processed");
 
-        payable(msg.sender).transfer(getCampaign._amtRaised);
         getCampaign.isCompleted = true;
+        (bool success, ) = payable(msg.sender).call{value: getCampaign._amtRaised}("");
+        require(success, "Transfer failed");
 
         emit Payout();
     }

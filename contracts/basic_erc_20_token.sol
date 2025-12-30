@@ -2,7 +2,7 @@
 pragma solidity ^0.8.13;
 
 contract BasicToken20 {
-    // Stare Variables
+    // State Variables
     string public name = "BasicERCToken";
     string public symbol = "BSC";
     uint256 public decimals = 18;
@@ -22,8 +22,9 @@ contract BasicToken20 {
     
     // Transfer tokens to another address
     function transferFunds(address _to, uint256 _amt) public returns(bool){
-        require(balanceOf[msg.sender]>0, "No Funds to Transfer");
-        require(balanceOf[msg.sender]<_amt, "Insufficient Funds");
+        require(_to != address(0), "Invalid recipient address");
+        require(balanceOf[msg.sender] >= _amt, "Insufficient Funds");
+        require(_amt > 0, "Amount must be greater than zero");
 
         balanceOf[msg.sender] -= _amt;
         balanceOf[_to] += _amt;
@@ -35,7 +36,7 @@ contract BasicToken20 {
     // Approve someone to spend tokens on your behalf
     function approve(address _spender, uint256 _amt) public returns(bool){
         require(_spender != address(0), "Invalid address");
-        require(balanceOf[msg.sender]>=_amt, "Insufficient Funds");
+        require(_amt > 0, "Amount must be greater than zero");
 
         allowance[msg.sender][_spender] = _amt;
 
@@ -45,8 +46,11 @@ contract BasicToken20 {
 
     // Transfer from someone else (with allowance)
     function transferFrom(address from, address to, uint256 amt) public returns(bool){
-        require(balanceOf[from]>=amt, "Insufficient Funds");
-        require(allowance[from][msg.sender]>=amt, "Alownace Exceeded"); // The msg.sender is allowed to be as a spender
+        require(from != address(0), "Invalid sender address");
+        require(to != address(0), "Invalid recipient address");
+        require(balanceOf[from] >= amt, "Insufficient Funds");
+        require(allowance[from][msg.sender] >= amt, "Allowance Exceeded");
+        require(amt > 0, "Amount must be greater than zero");
 
         balanceOf[from] -= amt;
         balanceOf[to] += amt;
@@ -58,6 +62,7 @@ contract BasicToken20 {
 
     // Mint new tokens to the caller
     function mint(uint256 _amt) public returns(bool){
+        require(_amt > 0, "Amount must be greater than zero");
         balanceOf[msg.sender] += _amt;
         totalSupply += _amt;
 
@@ -68,7 +73,8 @@ contract BasicToken20 {
 
     // Burn your own tokens
     function burn(uint256 amount) public returns(bool){
-        require(balanceOf[msg.sender]>=amount, "Insufficient Funds");
+        require(balanceOf[msg.sender] >= amount, "Insufficient Funds");
+        require(amount > 0, "Amount must be greater than zero");
         balanceOf[msg.sender] -= amount;
         totalSupply -= amount;
 

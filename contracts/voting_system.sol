@@ -12,18 +12,23 @@ contract VoteApp{
     Candidate[] public candidates;
     bool public isVotingStarted;
     bool public isVotingEnded;
-    address admin = 0x5B38Da6a701c568545dCfcB03FcB875f56beddC4;
+    address public admin;
     mapping(address => bool) public isDoneVoting;
 
     // events
     event candidateAdded(string _name);
-    event doneVoting();
+    event doneVoting(address indexed voter, uint256 candidateIndex);
     event votingStarted();
     event votingEnded();
 
+    // constructor
+    constructor() {
+        admin = msg.sender;
+    }
+
     // modifiers
     modifier onlyAdmin(){
-        require(msg.sender == admin, "Only Admins can add Candidated");
+        require(msg.sender == admin, "Only Admin can perform this action");
         _;
     }
 
@@ -32,35 +37,37 @@ contract VoteApp{
         _;
     }
 
-    function getCandidated() public view returns(Candidate[] memory){
+    function getCandidates() public view returns(Candidate[] memory){
         return candidates;
     }
 
     function addCandidate(string memory _name) public onlyAdmin{
+        require(bytes(_name).length > 0, "Candidate name cannot be empty");
+        require(!isVotingStarted, "Cannot add candidates after voting started");
         candidates.push(Candidate(_name, 0));
         emit candidateAdded(_name);
     }
 
-    function startVoting() public{
+    function startVoting() public onlyAdmin{
+        require(candidates.length > 0, "No candidates added");
         require(!isVotingStarted, "Voting Started Already");
         isVotingStarted = true;
         emit votingStarted();
     }
 
-    function endVoting() public {
+    function endVoting() public onlyAdmin {
         require(isVotingStarted && !isVotingEnded, "Voting not Active");
         isVotingEnded = true;
         emit votingEnded();
     }
 
     function makeVote(uint256 _idx) public whenVotingActive{
-        require(isVotingStarted && !isVotingEnded, "Voting not Active");
         require(!isDoneVoting[msg.sender], "Already Voted");
         require(_idx < candidates.length, "Invalid Candidate");
 
         candidates[_idx].voteCount += 1;
         isDoneVoting[msg.sender] = true;
-        emit doneVoting();
+        emit doneVoting(msg.sender, _idx);
     }
 
     function getWinner() public view returns(string memory, uint256){

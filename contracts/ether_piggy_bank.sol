@@ -29,41 +29,36 @@ contract EtherPiggyBank{
     }
 
     function getBalance() public view returns(uint256){
-        uint256 bal = address(this).balance / 1 ether;
-        return bal;
+        return address(this).balance;
     }
 
-    function withdraw(uint256 _amt) public {
-        require(msg.sender == owner, "Only owner can withdraw the money");
-        
-        // Getting the amount available
+    function withdraw(uint256 _amt) public onlyOwner {
+        require(_amt > 0, "Amount must be greater than zero");
         uint256 amount = address(this).balance;
-        require(amount>0, "No funds to Withdraw");
-        require(_amt < amount, "Insufficient Balance" );
+        require(amount >= _amt, "Insufficient Balance");
 
-        // The default _amt here is in Wei, so we need to convert it into Ether
-        uint256 _amtEther = _amt*1 ether;
-
-        // Getting the amount back from the contract
-        payable(owner).transfer(_amtEther);
-        emit Withdraw(owner, _amtEther);
+        (bool success, ) = payable(owner).call{value: _amt}("");
+        require(success, "Transfer failed");
+        emit Withdraw(owner, _amt);
     }
 
-    function withdrawAll() public {
+    function withdrawAll() public onlyOwner {
         uint256 amount = address(this).balance;
+        require(amount > 0, "No Funds to Withdraw");
 
-        require(amount>0, "No Funds to Transfer");
-
-        payable(owner).transfer(amount);
+        (bool success, ) = payable(owner).call{value: amount}("");
+        require(success, "Transfer failed");
         emit Withdraw(owner, amount);
     }
 
-    function transwerFunds(address to, uint256 _amt) public {
+    function transferFunds(address to, uint256 _amt) public onlyOwner {
+        require(to != address(0), "Invalid recipient address");
+        require(_amt > 0, "Amount must be greater than zero");
         uint256 amountBal = address(this).balance;
-        require(_amt<amountBal, "Insufficient Balance");
-        require(amountBal>0, "No Funds to Transfer");
-        uint256 finalAmt = _amt*1 ether;
-        payable(to).transfer(finalAmt);
-        emit Transfered(to, finalAmt);
+        require(amountBal >= _amt, "Insufficient Balance");
+        
+        (bool success, ) = payable(to).call{value: _amt}("");
+        require(success, "Transfer failed");
+        emit Transfered(to, _amt);
     }
 }

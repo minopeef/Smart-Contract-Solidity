@@ -7,22 +7,34 @@ struct Task{
 }
 
 contract TodoApp{
-   mapping(uint256 => Task[]) public tasksList;
+    mapping(address => Task[]) public tasksList;
 
+    // Events
+    event TaskAdded(address indexed user, uint256 taskId, string taskName);
+    event TaskUpdated(address indexed user, uint256 taskId, string newTaskName);
+    event TaskCompleted(address indexed user, uint256 taskId);
 
-   function addTask(uint256 _userId, string memory _taskName, bool isCompleted) public {
-        tasksList[_userId].push(Task(_taskName, isCompleted));
-   }
+    function addTask(string memory _taskName) public {
+        require(bytes(_taskName).length > 0, "Task name cannot be empty");
+        tasksList[msg.sender].push(Task(_taskName, false));
+        emit TaskAdded(msg.sender, tasksList[msg.sender].length - 1, _taskName);
+    }
 
-   function getTask(uint256 _userId) public view returns (Task[] memory){
-        return tasksList[_userId];
-   }
+    function getTask() public view returns (Task[] memory){
+        return tasksList[msg.sender];
+    }
 
-   function markTaskAsCompleted(uint256 _userId, uint256 _taskId) public {
-        tasksList[_userId][_taskId].isCompleted = true;
-   }
+    function markTaskAsCompleted(uint256 _taskId) public {
+        require(_taskId < tasksList[msg.sender].length, "Invalid task ID");
+        require(!tasksList[msg.sender][_taskId].isCompleted, "Task already completed");
+        tasksList[msg.sender][_taskId].isCompleted = true;
+        emit TaskCompleted(msg.sender, _taskId);
+    }
 
-   function updateTask(uint256 _userId, uint256 _taskId, string memory _newTask) public {
-        tasksList[_userId][_taskId].taskName = _newTask;
-   }
+    function updateTask(uint256 _taskId, string memory _newTask) public {
+        require(_taskId < tasksList[msg.sender].length, "Invalid task ID");
+        require(bytes(_newTask).length > 0, "Task name cannot be empty");
+        tasksList[msg.sender][_taskId].taskName = _newTask;
+        emit TaskUpdated(msg.sender, _taskId, _newTask);
+    }
 }
